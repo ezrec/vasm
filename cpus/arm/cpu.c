@@ -10,7 +10,7 @@ mnemonic mnemonics[] = {
 };
 int mnemonic_cnt = sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright = "vasm ARM cpu backend 0.2c (c) 2004,2006,2010 Frank Wille";
+char *cpu_copyright = "vasm ARM cpu backend 0.2d (c) 2004,2006,2010 Frank Wille";
 char *cpuname = "ARM";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -42,7 +42,7 @@ static const char *shift_strings[NUM_SHIFTTYPES] = {
 };
 
 static int OC_SWP,OC_NOP;
-static int elfoutput = 0;	/* output will be an ELF object file */
+static int elfoutput = 0;       /* output will be an ELF object file */
 static hashtable *regsymhash;   /* hash-table for ARM register symbols */
 
 static section *last_section = 0;
@@ -68,14 +68,14 @@ static int addregsym(char *sym,int val)
   hashdata data;
   regsym *new;
 
-  if (find_name(regsymhash,sym,&data))
+  if (find_name_nc(regsymhash,sym,&data))
     return 0;
 
-	data.ptr = new = mymalloc(sizeof(regsym));
+  data.ptr = new = mymalloc(sizeof(regsym));
   new->name = mymalloc(strlen(sym)+1);
   strcpy(new->name,sym);
   new->value = val;
-	add_hashentry(regsymhash,new->name,data);
+  add_hashentry(regsymhash,new->name,data);
   return 1;
 }
 

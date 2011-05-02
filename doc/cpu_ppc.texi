@@ -2,7 +2,7 @@ This chapter documents the Backend for the PowerPC microprocessor family.
 
 @section Legal
 
-    This module is written in 2002-2006 by Frank Wille.
+    This module is written in 2002-2006,2008,2011 by Frank Wille.
 
     This archive may be redistributed without modifications and used
     for non-commercial purposes.
@@ -141,4 +141,6 @@ This module has the following error messages:
 @item 2013: operand out of range: %ld (allowed: %ld to %ld)
 @item 2014: not a valid register (0-31)
 @item 2015: missing base register in load/store addressing mode
+@item 2016: missing mandatory operand
+@item 2017: ignoring fake operand
 @end itemize

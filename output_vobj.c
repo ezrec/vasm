@@ -1,9 +1,9 @@
 /* output_vasm.c vobj format output driver for vasm */
-/* (c) in 2002-2010 by Volker Barthelmann */
+/* (c) in 2002-2011 by Volker Barthelmann */
 
 #include "vasm.h"
 
-static char *copyright="vasm vobj output module 0.7 (c) 2002-2010 Volker Barthelmann";
+static char *copyright="vasm vobj output module 0.7a (c) 2002-2011 Volker Barthelmann";
 
 /*
   Format (WILL CHANGE!):
@@ -201,9 +201,6 @@ static void write_output(FILE *f,section *sec,symbol *sym)
   symbol *symp;
   taddr size,data,nrelocs;
 
-  if(!sec)
-    ierror(0);
-  
   for(nsecs=1,secp=sec;secp;secp=secp->next)
     secp->idx=nsecs++;
 

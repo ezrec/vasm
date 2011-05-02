@@ -696,16 +696,16 @@ static void handle_endm(char *s)
 
 static void ifdef(char *s,int b)
 {
-  char *name = s;
+  char *name;
   symbol *sym;
   int result;
 
-  name = s;
-  if (!(s = skip_identifier(s))) {
-    syntax_error(10);  /* identifier expected */
-    return;
+  if (!(name = get_local_label(&s))) {
+    if (!(name = parse_identifier(&s))) {
+      syntax_error(10);  /* identifier expected */
+      return;
+    }
   }
-  name = cnvstr(name,s-name);
   if (sym = find_symbol(name))
     result = sym->type != IMPORT;
   else
@@ -1141,7 +1141,7 @@ char *get_local_label(char **start)
     while (isdigit((unsigned char)*s) || *s=='_')  /* '_' needed for '\@' */
       s++;
     if (s > (*start+1)) {
-      name = make_local_label(*start,s-*start);
+      name = make_local_label(NULL,0,*start,s-*start);
       *start = skip(s);
     }
   }
@@ -1149,7 +1149,7 @@ char *get_local_label(char **start)
     while (isalnum((unsigned char)*s) || *s=='_')  /* '_' needed for '\@' */
       s++;
     if (s!=*start && *s=='$') {
-      name = make_local_label(*start,s-*start);
+      name = make_local_label(NULL,0,*start,s-*start);
       *start = skip(++s);
     }
   }

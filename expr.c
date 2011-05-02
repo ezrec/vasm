@@ -1,5 +1,5 @@
 /* expr.c expression handling for vasm */
-/* (c) in 2002-2010 by Volker Barthelmann */
+/* (c) in 2002-2011 by Volker Barthelmann */
 
 #include "vasm.h"
 
@@ -121,12 +121,8 @@ static expr *primary_expr(void)
     }else new=curpc_expr();
     return new;
   }
-  if(ISIDSTART(*s)){
+  if(name=parse_identifier(&s)){
     symbol *sym;    
-    name=s++;
-    while(ISIDCHAR(*s))
-      s++;
-    name=cnvstr(name,s-name);
     EXPSKIP();
     sym=find_symbol(name);
     if(!sym){

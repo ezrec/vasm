@@ -1,5 +1,5 @@
 /* vasm.h  main header file for vasm */
-/* (c) in 2002-2010 by Volker Barthelmann */
+/* (c) in 2002-2011 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -53,6 +53,10 @@ typedef struct listing listing;
 
 #ifndef END_PARENTH
 #define END_PARENTH(x) ((x)==')')
+#endif
+
+#ifndef CHKIDEND
+#define CHKIDEND(s,e) (e)
 #endif
 
 #define MAXPATHLEN 1024
@@ -187,7 +191,7 @@ symbol *new_tmplabel(section *);
 symbol *internal_abs(char *);
 void add_symbol(symbol *);
 symbol *find_symbol(char *);
-char *make_local_label(char *,int);
+char *make_local_label(char *,int,char *,int);
 source *new_source(char *,char *,size_t);
 section *new_section(char *,char *,int);
 void new_org(taddr);

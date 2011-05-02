@@ -1,6 +1,35 @@
 vasm history
 =============
 
+- 1.5a (01.04.11)
+o Fixed -nocase option to make it no longer modify external symbol names,
+  which then broke linking.
+o Made IfDef and IfNotDef directives work with local symbols.
+o Additionally to the standard \@ to insert a unique ID within a macro the
+  symbols \@! and \@@ are supported to put the current ID onto the stack or
+  pull the last ID from the stack.
+o PPC: Fixed detection of missing and extra operands.
+o m68k: FPU register names may be used for symbols, as long as no FPU code
+  generation was enabled.
+o m68k: Fixed a branch optimization bug, which occurs when the effect of
+  all translations is nullified, so that no label changes its address in
+  one pass.
+o oldstyle-syntax: Fixed pc-symbol ('*') assignments. "* = <addr>" didn't
+  work in the first column.
+o mot-syntax: Do not crash on PRINTT without operand, but just print
+  a newline.
+o mot-syntax: Dots ('.') are allowed everywhere in the label, not only
+  at the beginning, when either the -devpac option or the new -ldots
+  option was specified.
+o mot-syntax: Any local symbol in the source can be referenced using the
+  global_name\local_name syntax, as in PhxAss.
+o mot-syntax: When OUTPUT is used with ".name" then it is not only appended
+  to the output name, but it also replaces a possible extension in it
+  (Devpac compatibility).
+o mot-syntax: Option -localu makes local symbols start with an underscore
+  instead of a dot (from Devpac).
+o output-vobj: A file without sections no longer causes an internal error.
+
 - 1.5 (01.12.10)
 o A "\\" inside a macro has to be replaced by "\" when the assembler is
   in a mode without escape-code handling (e.g. Devpac-compatibility).

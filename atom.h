@@ -59,6 +59,9 @@ typedef struct atom {
   source *src;
   int line;
   listing *list;
+#ifdef CHECK_ATOMSIZE
+  taddr lastsize;
+#endif
   union {
     instruction *inst;
     dblock *db;

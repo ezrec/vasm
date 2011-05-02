@@ -30,13 +30,13 @@ allclean:
 	$(RM) obj$(TARGET)/*
 
 
-$(PRE)vasm.o: vasm.c vasm.h expr.h error.h supp.h atom.h
+$(PRE)vasm.o: vasm.c vasm.h expr.h error.h supp.h atom.h syntax/$(SYNTAX)/syntax.h
 	$(CC) $(INCLUDES) $(COPTS) vasm.c $(CCOUT)$(PRE)vasm.o
 
-$(PRE)atom.o: atom.c vasm.h expr.h error.h supp.h reloc.h
+$(PRE)atom.o: atom.c vasm.h expr.h error.h supp.h reloc.h syntax/$(SYNTAX)/syntax.h
 	$(CC) $(INCLUDES) $(COPTS) atom.c $(CCOUT)$(PRE)atom.o
 
-$(PRE)expr.o: expr.c vasm.h expr.h error.h supp.h
+$(PRE)expr.o: expr.c vasm.h expr.h error.h supp.h syntax/$(SYNTAX)/syntax.h
 	$(CC) $(INCLUDES) $(COPTS) expr.c $(CCOUT)$(PRE)expr.o
 
 $(PRE)symtab.o: symtab.c vasm.h error.h supp.h
@@ -48,7 +48,7 @@ $(PRE)error.o: error.c vasm.h error.h general_errors.h output_errors.h cpus/$(CP
 $(PRE)reloc.o: reloc.c vasm.h expr.h error.h supp.h reloc.h
 	$(CC) $(INCLUDES) $(COPTS) reloc.c $(CCOUT)$(PRE)reloc.o
 
-$(PRE)parse.o: parse.c vasm.h parse.h atom.h
+$(PRE)parse.o: parse.c vasm.h parse.h atom.h syntax/$(SYNTAX)/syntax.h
 	$(CC) $(INCLUDES) $(COPTS) parse.c $(CCOUT)$(PRE)parse.o
 
 $(PRE)vmath.o: vmath.c vasm.h error.h supp.h vmath.h
@@ -78,7 +78,7 @@ $(PRE)output_aout.o: output_aout.c output_aout.h vasm.h error.h supp.h atom.h
 $(PRE)output_tos.o: output_tos.c output_tos.h vasm.h error.h supp.h atom.h
 	$(CC) $(INCLUDES) $(COPTS) output_tos.c $(CCOUT)$(PRE)output_tos.o
 
-$(PRE)cpu.o: cpus/$(CPU)/cpu.c cpus/$(CPU)/cpu.h vasm.h expr.h error.h supp.h reloc.h vmath.h parse.h atom.h
+$(PRE)cpu.o: cpus/$(CPU)/cpu.c cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h vasm.h expr.h error.h supp.h reloc.h vmath.h parse.h atom.h
 	$(CC) $(INCLUDES) $(COPTS) cpus/$(CPU)/cpu.c $(CCOUT)$(PRE)cpu.o
 
 $(PRE)syntax.o: syntax/$(SYNTAX)/syntax.c syntax/$(SYNTAX)/syntax.h vasm.h expr.h error.h supp.h parse.h atom.h
