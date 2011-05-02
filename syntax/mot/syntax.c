@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2010 by Frank Wille */
+/* (c) in 2002-2011 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm motorola syntax module 3.2 (c) 2002-2010 Frank Wille";
+char *syntax_copyright="vasm motorola syntax module 3.3 (c) 2002-2011 Frank Wille";
 
 char commentchar = ';';
 
@@ -31,6 +31,8 @@ char *defsecttype = code_type;
 static int align_data = 0;
 static int phxass_compat = 0;
 static int allow_spaces = 0;
+static int dot_idchar = 0;
+static char local_char = '.';
 
 static hashtable *dirhash;
 static int parse_end = 0;
@@ -60,6 +62,28 @@ void eol(char *s)
     if (*s!='\0' && *s!=commentchar && !isspace((unsigned char)*s))
       syntax_error(6);
   }
+}
+
+
+int isidchar(char c)
+{
+  if (isalnum((unsigned char)c) || c=='_' || c=='$' || c=='%')
+    return 1;
+  if (dot_idchar && c=='.')
+    return 1;
+  return 0;
+}
+
+
+char *chkidend(char *start,char *end)
+{
+  if (dot_idchar && (end-start)>2 && *(end-2)=='.') {
+    char c = tolower((unsigned char)*(end-1));
+
+    if (c=='b' || c=='w' || c=='l')
+      return end - 2;	/* .b/.w/.l extension is not part of identifier */
+  }
+  return end;
 }
 
 
@@ -714,15 +738,23 @@ static void handle_output(char *s)
   char *name;
 
   if (name = parse_name(&s)) {
-    if (outname && *name=='.') {
-      char *newname = mymalloc(strlen(outname)+strlen(name)+1);
+    if (*name=='.') {
+      char *p;
+      int outlen;
 
-      strcpy(newname,outname);
-      strcat(newname,name);
-      free(name);
-      outname = newname;
+      if (!outname)
+        outname = inname;
+      if (p = strrchr(outname,'.'))
+        outlen = p - outname;
+      else
+        outlen = strlen(outname);
+      p = mymalloc(outlen+strlen(name)+1);
+      memcpy(p,outname,outlen);
+      strcpy(p+outlen,name);
+      myfree(name);
+      outname = p;
     }
-    else if (!outname && *name != '.')
+    else if (!outname)
       outname = name;
   }
 }
@@ -861,16 +893,16 @@ static void handle_ifnc(char *s)
 
 static void ifdef(char *s,int b)
 {
-  char *name = s;
+  char *name;
   symbol *sym;
   int result;
 
-  name = s;
-  if (!(s = skip_identifier(s))) {
-    syntax_error(10);  /* identifier expected */
-    return;
+  if (!(name = get_local_label(&s))) {
+    if (!(name = parse_identifier(&s))) {
+      syntax_error(10);  /* identifier expected */
+      return;
+    }
   }
-  name = cnvstr(name,s-name);
   if (sym = find_symbol(name))
     result = sym->type != IMPORT;
   else
@@ -1342,6 +1374,7 @@ void parse(void)
     if (labname) {
       /* we have found a global or local label at first column */
       symbol *label,*labsym;
+      int lablen = strlen(labname);
 
       if (*s == ':')    /* ':' is optional */
         s = skip(s+1);
@@ -1509,29 +1542,53 @@ char *const_prefix(char *s,int *base)
 }
 
 
+static char *skip_local(char *p)
+{
+  char *s;
+
+  if (ISIDSTART(*p) || isdigit((unsigned char)*p)) {  /* may start with digit */
+    s = p++;
+    while (ISIDCHAR(*p))
+      p++;
+    p = CHKIDEND(s,p);
+  }
+  else
+    p = NULL;
+
+  return p;
+}
+
+
 char *get_local_label(char **start)
 /* Motorola local labels start with a '.' or end with '$': "1234$", ".1" */
 {
-  char *s = *start;
-  char *name = NULL;
+  char *s,*p,*name;
+  int globlen = 0;
 
-  if (*s == '.') {
-    s++;
-    while (isalnum((unsigned char)*s) || *s=='_')  /* '_' needed for '\@' */
-      s++;
-    if (s > (*start+1)) {
-      name = make_local_label(*start,s-*start);
-      *start = skip(s);
+  name = NULL;
+  s = *start;
+  p = skip_local(s);
+
+  if (p!=NULL && *p=='\\' && ISIDSTART(*s) && *s!=local_char && *(p-1)!='$') {
+    /* skip local part of global\local label */
+    globlen = p - s;
+    s = p + 1;
+    p = skip_local(s);
+  }
+
+  if (p!=NULL && p>(s+1)) {  /* identifier with at least 2 characters */
+    if (*s == local_char) {
+      /* .label */
+      name = make_local_label(*start,globlen,s,p-s);
+      *start = skip(p);
+    }
+    else if (*(p-1) == '$') {
+      /* label$ */
+      name = make_local_label(*start,globlen,s,(p-1)-s);
+      *start = skip(p);
     }
   }
-  else {
-    while (isalnum((unsigned char)*s) || *s=='_')  /* '_' needed for '\@' */
-      s++;
-    if (s!=*start && *s=='$') {
-      name = make_local_label(*start,s-*start);
-      *start = skip(++s);
-    }
-  }
+
   return name;
 }
 
@@ -1565,6 +1622,7 @@ int syntax_args(char *p)
     align_data = 1;
     esc_sequences = 0;
     maxmacparams = 36;  /* allow \a..\z macro parameters */
+    dot_idchar = 1;
     internal_abs(rs_name);
     internal_abs(fo_name);
     internal_abs(so_name);
@@ -1579,6 +1637,14 @@ int syntax_args(char *p)
   }
   else if (!strcmp(p,"-spaces")) {
     allow_spaces = 1;
+    return 1;
+  }
+  else if (!strcmp(p,"-ldots")) {
+    dot_idchar = 1;
+    return 1;
+  }
+  else if (!strcmp(p,"-localu")) {
+    local_char = '_';
     return 1;
   }
   return 0;

@@ -37,3 +37,5 @@
   "no current macro to exit",ERROR,
   "internal symbol %s redefined by user",FATAL,
   "illegal relocation",ERROR,
+  "macro id stack overflow",ERROR,
+  "macro id pull without matching push",ERROR,			/* 40 */

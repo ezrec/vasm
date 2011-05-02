@@ -1,9 +1,12 @@
 /* snytax.h  syntax header file for vasm */
-/* (c) in 2002,2005,2009,2010 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002,2005,2009-2011 by Volker Barthelmann and Frank Wille */
 
 /* macros to recognize identifiers */
+int isidchar(char);
+char *chkidend(char *,char *);
 #define ISIDSTART(x) ((x)=='.'||(x)=='@'||(x)=='_'||isalpha((unsigned char)(x)))
-#define ISIDCHAR(x) ((x)=='_'||(x)=='$'||(x)=='%'||isalnum((unsigned char)(x)))
+#define ISIDCHAR(x) isidchar(x)
+#define CHKIDEND(s,e) chkidend((s),(e))
 
 /* symbol which contains the number of macro arguments */
 #define NARGSYM "NARG"

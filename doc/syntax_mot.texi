@@ -3,7 +3,7 @@ M68k family of CPUs, which is available with the extension @code{mot}.
 
 @section Legal
 
-    This module is copyright in 2002-2010 by Frank Wille.
+    This module is copyright in 2002-2011 by Frank Wille.
 
     This archive may be redistributed without modifications and used
     for non-commercial purposes.
@@ -31,8 +31,16 @@ This syntax module provides the following additional options:
   @item Predefines offset symbols @code{__RS}, @code{__SO} and @code{__FO} as
         @code{0}, which in vasm are undefined until first referenced.
   @item Disable escape codes in strings (see @option{-noesc}).
+  @item Enable dots within identifiers (see @option{-ldots}).
   @item Up to 35 macro arguments.
 @end table
+
+@item -ldots
+ Allow dots (@code{.}) within all identifiers.
+
+@item -localu
+ Local symbols are introduced by @code{'_'} instead of @code{'.'}. For
+ Devpac compatbility, which offers a similar option.
 
 @item -phxass
  PhxAss-compatibilty mode. Enables the following features:
@@ -62,6 +70,16 @@ operands are separated by comma (@code{,}).
 Local labels are preceded by '@code{.}' or terminated by '@code{$}'.
 For the rest, any alphanumeric character including '@code{_}' is allowed.
 Local labels are valid between two global label definitions.
+
+Otherwise dots (@code{.}) are not allowed within a label by default, unless
+the option @option{-ldots} or @option{-devpac} was specified. Even then,
+labels ending on @code{.b}, @code{.w} or @code{.l} are never possible.
+
+It is possible to refer to any local symbol in the source by preceding its
+name with the name of the last global symbol, which was defined before:
+@code{global_name\local_name}. This is for PhxAss compatibility only,
+and is no recommended style. Does not work in a macro, as it conflicts
+with macro arguments.
 
 Make sure that you don't define a label on the same line as a
 directive for conditional assembly (if, else, endif)! This is not supported.
@@ -413,10 +431,12 @@ CPU- and output-module support them):
       Sets the base address for the subsequent code.
 
 @item output <name>
-      Sets the output file name to <name> when no output name was given on
-      the command line. A special case for Devpac-compatibility is when
-      <name> starts with a @code{'.'} and an output name was already given.
-      Then the current output name gets <name> appended as an extension.
+      Sets the output file name to @code{<name>} when no output name was
+      given on the command line. A special case for Devpac-compatibility
+      is when @code{<name>} starts with a @code{'.'} and an output name was
+      already given. Then the current output name gets @code{<name>}
+      appended as an extension. When an extension already exists,
+      then it is replaced.
 
 @item page
       Start a new page in the listing file (not implemented).

@@ -1,5 +1,5 @@
 /* symtab.c  hashtable file for vasm */
-/* (c) in 2002-2004,2008 by Volker Barthelmann and Frank Wille */
+/* (c) in 2002-2004,2008,2011 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -70,7 +70,7 @@ size_t hashcodelen_nc(char *name,int len)
 /* add to hashtable; name must be unique */
 void add_hashentry(hashtable *ht,char *name,hashdata data)
 {
-  size_t i=hashcode(name)%ht->size;
+  size_t i=nocase?(hashcode_nc(name)%ht->size):(hashcode(name)%ht->size);
   hashentry *new=mymalloc(sizeof(*new));
   new->name=name;
   new->data=data;
@@ -85,14 +85,18 @@ void add_hashentry(hashtable *ht,char *name,hashdata data)
 /* finds unique entry in hashtable */
 int find_name(hashtable *ht,char *name,hashdata *result)
 {
-  size_t i=hashcode(name)%ht->size;
-  hashentry *p;
-  for(p=ht->entries[i];p;p=p->next){
-    if(!strcmp(name,p->name)){
-      *result=p->data;
-      return 1;
-    }else
-      ht->collisions++;
+  if(nocase)
+    return find_name_nc(ht,name,result);
+  else{
+    size_t i=hashcode(name)%ht->size;
+    hashentry *p;
+    for(p=ht->entries[i];p;p=p->next){
+      if(!strcmp(name,p->name)){
+        *result=p->data;
+        return 1;
+      }else
+        ht->collisions++;
+    }
   }
   return 0;
 }
@@ -100,14 +104,18 @@ int find_name(hashtable *ht,char *name,hashdata *result)
 /* same as above, but uses len instead of zero-terminated string */
 int find_namelen(hashtable *ht,char *name,int len,hashdata *result)
 {
-  size_t i=hashcodelen(name,len)%ht->size;
-  hashentry *p;
-  for(p=ht->entries[i];p;p=p->next){
-    if(!strncmp(name,p->name,len)&&p->name[len]==0){
-      *result=p->data;
-      return 1;
-    }else
-      ht->collisions++;
+  if(nocase)
+    return find_namelen_nc(ht,name,len,result);
+  else{
+    size_t i=hashcodelen(name,len)%ht->size;
+    hashentry *p;
+    for(p=ht->entries[i];p;p=p->next){
+      if(!strncmp(name,p->name,len)&&p->name[len]==0){
+        *result=p->data;
+        return 1;
+      }else
+        ht->collisions++;
+    }
   }
   return 0;
 }

@@ -1,5 +1,5 @@
 /* parse.c - global parser support functions */
-/* (c) in 2009-2010 by Volker Barthelmann and Frank Wille */
+/* (c) in 2009-2011 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -22,6 +22,10 @@ static char *rept_start = NULL;
 #ifdef CARGSYM
 static expr *carg1;
 #endif
+
+#define IDSTACKSIZE 100
+static unsigned long id_stack[IDSTACKSIZE];
+static int id_stack_index = 0;
 
 
 char *escape(char *s,char *code)
@@ -135,11 +139,13 @@ char *parse_name(char **start)
 
 char *skip_identifier(char *s)
 {
+  char *name = s;
+
   if (ISIDSTART(*s)) {
     s++;
     while (ISIDCHAR(*s))
       s++;
-    return s;
+    return CHKIDEND(name,s);
   }
   return NULL;
 }
@@ -643,10 +649,28 @@ char *read_next_line(void)
       else if (*(s+1) == '@') {
         /* \@ : insert a unique id "_nnnnnn" */
         if (len >= 7) {
+          unsigned long unique_id = cur_src->id;
+
           *d++ = '_';
           len--;
-          nc = sprintf(d,"%06lu",cur_src->id);
           s += 2;
+          if (*s == '!') {
+            /* push id onto stack */
+            if(id_stack_index >= IDSTACKSIZE)
+              general_error(39);  /* id stack overflow */
+            else
+              id_stack[id_stack_index++] = unique_id;
+            ++s;              
+          }
+          else if(*s == '@') {
+            /* pull id from stack */
+            if (id_stack_index <= 0)
+              general_error(40);  /* id pull without matching push */
+            else
+              unique_id = id_stack[--id_stack_index];
+            ++s;
+          }
+          nc = sprintf(d, "%06lu", unique_id);
         }
       }
       else if (*(s+1) == '#') {
@@ -747,35 +771,6 @@ char *read_next_line(void)
   }
 
   s = cur_src->linebuf;
-
-  if (nocase) {  /* case-insensitive assembly requested */
-    char c,q,dummy;
-
-    d = s;
-    q = 0;
-    while (*d) {
-      c = *d;
-      if (c=='\"' || c=='\'') {
-        d++;
-        if (c == q) {
-          if (*d == q)
-            d++;  /* allow """" to be recognized as " */
-          else
-            q = 0;
-        }
-        else if (!q)
-          q = c;
-      }
-      else if (q && c=='\\' && *(d+1)!='\0')
-        d = escape(d,&dummy);
-      else if (!q)
-        *d++ = tolower((unsigned char)c);
-      else
-        d++;
-    }
-  }
-
-  /* cur_src may be modified hereafter! */
   if (rept_end)
     start_repeat(rept_end);
   return s;

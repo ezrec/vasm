@@ -1,6 +1,6 @@
 /*
 ** cpu.c PowerPC cpu-description file
-** (c) in 2002-2008 by Frank Wille
+** (c) in 2002-2006,2008,2011 by Frank Wille
 */
 
 #include "vasm.h"
@@ -12,7 +12,7 @@ mnemonic mnemonics[] = {
 
 int mnemonic_cnt=sizeof(mnemonics)/sizeof(mnemonics[0]);
 
-char *cpu_copyright="vasm PowerPC cpu backend 1.4 (c) 2002-2008 Frank Wille";
+char *cpu_copyright="vasm PowerPC cpu backend 1.5 (c) 2002-2006,2008,2011 Frank Wille";
 char *cpuname = "PowerPC";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -519,8 +519,8 @@ taddr eval_operands(instruction *ip,section *sec,taddr pc,
    return size of instruction */
 {
   mnemonic *mnemo = &mnemonics[ip->code];
-  int i=0,j=0,omitted=0;
   taddr isize=4;
+  int i,j,omitted;
   operand op;
 
   if (insn != NULL) {
@@ -530,10 +530,14 @@ taddr eval_operands(instruction *ip,section *sec,taddr pc,
     *insn = mnemo->ext.opcode;
   }
 
-  while (ip->op[i]!=NULL && i<MAX_OPERANDS) {
-    op = *(ip->op[i++]);
+  for (i=0,j=0,omitted=0;
+       i<MAX_OPERANDS && j<MAX_OPERANDS && mnemo->operand_type[j]!=UNUSED; ) {
 
-    for (;;) {
+    if (ip->op[i])
+      op = *(ip->op[i]);
+    i++;
+
+    while (j<MAX_OPERANDS && mnemo->operand_type[j]!=UNUSED) {
       const struct powerpc_operand *ppcop;
       int reloctype;
       taddr val;
@@ -546,6 +550,11 @@ taddr eval_operands(instruction *ip,section *sec,taddr pc,
           /* an optional operand was omitted */
           omitted++;
           if (ppcop->flags & PPC_OPERAND_NEXT) {
+            /* ignore also next mnemo oper and use a special oper instead */
+            if (j < MAX_OPERANDS)
+              j++;
+            else
+              ierror(0);
             ppcop++;
           }
           else {  /* use a value of 0 for omitted operand */
@@ -554,6 +563,12 @@ taddr eval_operands(instruction *ip,section *sec,taddr pc,
             continue;
           }
         }
+      }
+
+      if (ip->op[i-1] == NULL) {
+        if (insn != NULL)
+          cpu_error(15);  /* missing mandatory operand */
+        return isize;
       }
 
       if ((reloctype = get_reloc_type(&op)) != REL_NONE) {
@@ -642,13 +657,14 @@ taddr eval_operands(instruction *ip,section *sec,taddr pc,
           *insn = insertcode(*insn,val,ppcop);
         }
 
-        if (j<MAX_OPERANDS && ip->op[i]==NULL && mnemo->operand_type[j]!=UNUSED) {
-          if (powerpc_operands[mnemo->operand_type[j]].flags & PPC_OPERAND_FAKE) {
-            /* next operand is a fake, just reuse last operand read */
-            op.attr = REL_NONE;
-            op.mode = OPM_NONE;
-            continue;
-          }
+        if (j<MAX_OPERANDS && mnemo->operand_type[j]!=UNUSED &&
+            (powerpc_operands[mnemo->operand_type[j]].flags & PPC_OPERAND_FAKE)) {
+          if (ip->op[i]!=NULL && insn!=NULL)
+            cpu_error(16);  /* ignoring fake operand */
+          /* next operand is a fake, just reuse last operand read */
+          op.attr = REL_NONE;
+          op.mode = OPM_NONE;
+          continue;
         }
       }
 

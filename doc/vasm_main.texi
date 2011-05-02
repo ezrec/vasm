@@ -226,6 +226,10 @@ characters within such a parameter may be specified by @code{>>}.
 '@code{n}' is a digit between 0 and 9) per macro invocation. Useful
 for defining reusable labels in a macro.
 
+@code{\@@!} does the same, but pushes the id onto an internal stack.
+
+@code{\@@@@} insert the id from top of the id-stack.
+
 @code{\#} is replaced by the number of parameters given to the current
 macro invocation.
 
@@ -314,5 +318,7 @@ The frontend has the following error messages:
 @item 37: no current macro to exit
 @item 38: internal symbol %s redefined by user
 @item 39: illegal relocation
+@item 40: macro id stack overflow
+@item 41: macro id pull without matching push
 
 @end itemize

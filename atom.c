@@ -1,5 +1,5 @@
 /* atom.c - atomic objects from source */
-/* (c) in 2010 by Volker Barthelmann and Frank Wille */
+/* (c) in 2010-2011 by Volker Barthelmann and Frank Wille */
 
 #include "vasm.h"
 
@@ -170,6 +170,8 @@ static taddr rorg_size(expr *rorg,section *sec,taddr pc)
    section is used */
 void add_atom(section *sec,atom *a)
 {
+  taddr size;
+
   if (!sec) {
     sec = default_section();
     if (!sec) {
@@ -196,7 +198,11 @@ void add_atom(section *sec,atom *a)
   sec->last = a;
 
   sec->pc = (sec->pc + a->align - 1) / a->align * a->align;
-  sec->pc += atom_size(a,sec,sec->pc);
+  size = atom_size(a,sec,sec->pc);
+#ifdef CHECK_ATOMSIZE
+  a->lastsize = size;
+#endif
+  sec->pc += size;
   if (a->align > sec->align)
     sec->align = a->align;
 
@@ -403,7 +409,7 @@ atom *new_text_atom(char *txt)
   new->next = 0;
   new->type = PRINTTEXT;
   new->align = 1;
-  new->content.ptext = txt;
+  new->content.ptext = txt ? txt : "";
   return new;
 }
 

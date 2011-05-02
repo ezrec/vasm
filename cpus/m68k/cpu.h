@@ -21,6 +21,9 @@
 /* data type to represent a target-address */
 typedef long taddr;
 
+/* the compexity of the optimizer affords to check the size of each atom */
+#define CHECK_ATOMSIZE
+
 /* instruction extension */
 #define HAVE_INSTRUCTION_EXTENSION 1
 typedef struct {

@@ -1,13 +1,13 @@
 /* vasm.c  main module for vasm */
-/* (c) in 2002-2010 by Volker Barthelmann */
+/* (c) in 2002-2011 by Volker Barthelmann */
 
 #include <stdlib.h>
 #include <stdio.h>
 
 #include "vasm.h"
 
-#define _VER "vasm 1.5"
-char *copyright = _VER " (c) in 2002-2010 Volker Barthelmann";
+#define _VER "vasm 1.5a"
+char *copyright = _VER " (c) in 2002-2011 Volker Barthelmann";
 #ifdef AMIGA
 static const char *_ver = "$VER: " _VER " " __AMIGADATE__ "\r\n";
 #endif
@@ -99,6 +99,7 @@ static void resolve_section(section *sec)
 {
   atom *p;
   int done,pass=0;
+  taddr size;
   do{
     done=1;
     if (++pass>=MAXPASSES){
@@ -124,12 +125,23 @@ static void resolve_section(section *sec)
           ierror(0);
         if(label->pc!=sec->pc){
           if(DEBUG)
-            printf("changing label %s from %lu to %lu\n",label->name,(unsigned long)label->pc,(unsigned long)sec->pc);
+            printf("changing label %s from %lu to %lu\n",label->name,
+                   (unsigned long)label->pc,(unsigned long)sec->pc);
           done=0;
           label->pc=sec->pc;
         }
       }
-      sec->pc+=atom_size(p,sec,sec->pc);
+      size=atom_size(p,sec,sec->pc);
+#ifdef CHECK_ATOMSIZE
+      if(size!=p->lastsize){
+        if(DEBUG)
+          printf("changed size of atom type %d at %lu from %ld to %ld\n",
+                 p->type,(unsigned long)sec->pc,(long)p->lastsize,(long)size);
+        done=0;
+        p->lastsize=size;
+      }
+#endif
+      sec->pc+=size;
     }
   }while(errors==0&&!done);
 }
@@ -766,17 +778,21 @@ symbol *find_symbol(char *name)
   return data.ptr;
 }
 
-char *make_local_label(char *loc,int llen)
+char *make_local_label(char *glob,int glen,char *loc,int llen)
 /* construct a local label of the form:
-   " " + last_global_label + " " + local-label-name */
+   " " + global_label_name + " " + local_label_name */
 {
-  int glen = strlen(last_global_label);
-  char *name = mymalloc(llen+glen+3);
-  char *p = name;
+  char *name,*p;
 
+  if (glen == 0) {
+    /* use the last defined global label */
+    glob = last_global_label;
+    glen = strlen(last_global_label);
+  }
+  p = name = mymalloc(llen+glen+3);
   *p++ = ' ';
   if (glen) {
-    memcpy(p,last_global_label,glen);
+    memcpy(p,glob,glen);
     p += glen;
   }
   *p++ = ' ';

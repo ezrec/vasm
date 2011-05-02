@@ -1,6 +1,6 @@
 /*
 ** cpu.c Motorola M68k, CPU32 and ColdFire cpu-description file
-** (c) in 2002-2010 by Frank Wille
+** (c) in 2002-2011 by Frank Wille
 */
 
 #include <math.h>
@@ -24,7 +24,7 @@ struct cpu_models models[] = {
 int model_cnt = sizeof(models)/sizeof(models[0]);
 
 
-char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 1.2 (c) 2002-2010 Frank Wille";
+char *cpu_copyright="vasm M68k/CPU32/ColdFire cpu backend 1.2a (c) 2002-2011 Frank Wille";
 char *cpuname = "M68k";
 int bitsperbyte = 8;
 int bytespertaddr = 4;
@@ -367,7 +367,7 @@ void cpu_opts_init(section *s)
   add_cpu_opt(s,OCMD_CPU,cpu_type);
   add_cpu_opt(s,OCMD_FPU,fpu_id);
   add_cpu_opt(s,OCMD_SDREG,sdreg);
-	cpu_opts_optinit(s);
+  cpu_opts_optinit(s);
   add_cpu_opt(s,OCMD_OPTWARN,warn_opts);
   add_cpu_opt(s,OCMD_CHKPIC,pic_check);
   add_cpu_opt(s,OCMD_CHKTYPE,typechk);
@@ -695,7 +695,7 @@ static unsigned short scan_Rnlist(char **start)
     for (p=*start; *p; p++) {
       p = skip(p);
       if (rangemode && (*p>='0' && *p<='7')) {  /* allows d0-7 */
-        reg = (lastreg & 8) | (*p - '0');
+        reg = (lastreg & REGAn) | (*p - '0');
         p++;
       }
       else if ((reg = getreg(&p,0,0)) < 0) {
@@ -739,7 +739,7 @@ static signed char getfreg(char **start)
   char *s = *start;
   signed char reg = -1;
 
-  if (ISIDSTART(*s) || (elfregs && *s=='%')) {
+  if ((cpu_type & (mfloat|mcffpu)) && (ISIDSTART(*s) || (elfregs && *s=='%'))) {
     char *p = s++;
     hashdata data;
 
@@ -1025,7 +1025,7 @@ static short getbasereg(char **start)
     if (r < 0) {
       signed char reg = getreg(start,0,1);
 
-      r = (reg>=0) ? (((short)(reg & 0x70)<<4) | (short)(reg & 15)) : -1;
+      r = (reg>=0) ? (((short)(reg & 0x70)<<4) | (short)REGgetA(reg)) : -1;
     }
 
     if ((r>=0) && (**start == '*')) {  /* read scale factor */
@@ -1086,8 +1086,8 @@ static taddr getbfk(char **p,int *dflag)
 
   if (reg >= 0) {
     *dflag = 1;
-    if (!(reg & 8))
-      return 0x80 + (reg & 7);
+    if (REGisDn(reg))
+      return 0x80 + REGget(reg);
     else
       cpu_error(18);  /* data register required */
   }
@@ -1291,7 +1291,7 @@ int parse_operand(char *p,int len,operand *op,int required)
 
         ptmp = skip(ptmp+1);
         reg = getreg(&ptmp,0,0);
-        if (reg>=0 && !(reg&8)) {
+        if (reg>=0 && REGisDn(reg)) {
           op->reg |= reg << 4;
           op->flags |= FL_DoubleReg | FL_020up;
           p = ptmp;
@@ -3270,7 +3270,10 @@ dontswap:
 
       switch (lastsize) {
         case 0:
-          ip->code = -1;  /* instruction was deleted and stays deleted */
+          if (diff != -2)
+            ip->qualifiers[0] = b_str;
+          else
+            ip->code = -1;
           break;
         case 2:
           if (diff==0 && oc!=0x6100) {
@@ -4098,6 +4101,9 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
    if necessary. */
 {
   dblock *db = new_dblock();
+  unsigned char ipflags = ip->ext.un.real.flags;
+  signed char lastsize = ip->ext.un.real.last_size;
+  instruction *realip = ip;
   unsigned char *d;
 
   /* really execute optimizations now */
@@ -4110,7 +4116,7 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
   }
   else {
     db->data = NULL;
-    return db;
+    goto eval_done;
   }
 
   /* encode instructions */
@@ -4371,6 +4377,11 @@ dblock *eval_instruction(instruction *ip,section *sec,taddr pc)
   }
   while (ip = ip->ext.un.copy.next);
 
+eval_done:
+  /* restore flags and last_size of real ip to allow instruction_size() */
+  realip->ext.un.real.flags = ipflags;
+  realip->ext.un.real.last_size = lastsize;
+
   return db;
 }
 
@@ -4580,7 +4591,7 @@ int cpu_args(char *arg)
     
     p += 2;
     if (!strncmp(p,"cf",2))
-      p += 2;	/* allow -mcf for ColdFire models */
+      p += 2;  /* allow -mcf for ColdFire models */
     cpu = get_cpu_type(&p);
     if (!cpu)
       return 0;
@@ -4958,8 +4969,8 @@ char *parse_cpu_special(char *start)
       s = skip(s);
       r = getreg(&s,0,0);
       if (r >= 0) {
-        if (r>=10 && r<=14)  /* a2-a6 */
-          sdreg = r & 7;
+        if (r>=(REGAn+2) && r<=(REGAn+6))  /* a2-a6 */
+          sdreg = REGget(r);
         else
           cpu_error(58);  /* not a valid small data register */
       }
@@ -5010,7 +5021,7 @@ char *parse_cpu_special(char *start)
         if (*s == ',') {
           s = skip(s+1);
           reg = getreg(&s,0,0);
-          if (reg>=8 && reg<=14) {
+          if (reg>=(REGAn+0) && reg<=(REGAn+6)) {
             if (baseexp[REGget(reg)] == NULL) {
               baseexp[REGget(reg)] = exp;
               eol(s);
@@ -5032,7 +5043,7 @@ char *parse_cpu_special(char *start)
 
       s = skip(s);
       reg = getreg(&s,0,0);
-      if (reg>=8 && reg<=14) {
+      if (reg>=(REGAn+0) && reg<=(REGAn+6)) {
         if (baseexp[REGget(reg)] != NULL) {
           baseexp[REGget(reg)] = NULL;
           eol(s);
@@ -5049,7 +5060,7 @@ char *parse_cpu_special(char *start)
       /* MACHINE <cpu-type> */
       s = skip(s);
       if (!strnicmp(s,"mc",2))
-        s += 2;	 /* Devpac-compatible MACHINE mc680x0 */
+        s += 2;  /* Devpac-compatible MACHINE mc680x0 */
       if (cpu = get_cpu_type(&s)) {
         set_cpu_type(cpu,1);
         eol(s);
@@ -5163,16 +5174,16 @@ int parse_cpu_label(char *labname,char **start)
       if ((r = getreg(&s,0,0)) >= 0) {
         data.ptr = new = mymalloc(sizeof(regsym));
         new->name = mystrdup(labname);
-        new->type = (r & 8) ? RSTYPE_An : RSTYPE_Dn;
-        new->reg = r & 7;
-      	add_hashentry(regsymhash,new->name,data);
+        new->type = REGisAn(r) ? RSTYPE_An : RSTYPE_Dn;
+        new->reg = REGget(r);
+        add_hashentry(regsymhash,new->name,data);
       }
       else if ((r = getfreg(&s)) >= 0) {
         data.ptr = new = mymalloc(sizeof(regsym));
         new->name = mystrdup(labname);
         new->type = RSTYPE_FPn;
         new->reg = r;
-      	add_hashentry(regsymhash,new->name,data);
+        add_hashentry(regsymhash,new->name,data);
       }
       else
         cpu_error(44);  /* register expected */

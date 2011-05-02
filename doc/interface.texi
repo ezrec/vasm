@@ -667,6 +667,12 @@ These macros should return non-zero if and only if the argument is a
 valid character to start and identifier/inside an identifier respectively.
 @code{ISIDCHAR} must be a superset of @code{ISIDSTART}.
 
+@item #define CHKIDEND(s,e) chkidend((s),(e))
+Defines an optional function to be called at the end of the identifier
+recognition process. It allows you to adjust the length of the identifier
+by returning a modified @code{e}. Default is to return @code{e}. The
+function is defined as @code{char *chkidend(char *startpos,char *endpos)}.
+
 @item #define NARGSYM "NARG"
 Defines the name of an optional symbol which contains the number of
 arguments in a macro.
@@ -674,7 +680,8 @@ arguments in a macro.
 @item #define EXPSKIP() s=exp_skip(s)
 Defines an optional replacement for skip() to be used in expr.c, to skip
 blanks in an expression. Useful to forbid blanks in an expression and to
-ignore the rest of the line (e.g. to treat the rest as comment).
+ignore the rest of the line (e.g. to treat the rest as comment). The
+function is defined as @code{char *exp_skip(char *stream)}.
 
 @item #define IGNORE_FIRST_EXTRA_OP 1
 Should be defined when the syntax module wants to ignore the operand field
@@ -798,6 +805,14 @@ Default alignment for n-bit data. Can also be a function.
 @item #define DATA_OPERAND(n) ...
 Operand class for n-bit data definitions. Can also be a function.
 Negative values denote a floating point data definition of -n bits.
+
+@item #define CHECK_ATOMSIZE
+Usually vasm will start another assembler pass when a label changed its
+value. With complex optimizers (e.g. M68k) it can happen that the effect
+from optimizations and translations of instructions is nullified, so the
+labels do not change. @code{CHECK_ATOMSIZE} will remember the sizes of
+all atoms from the previous pass and check them for changes, which is
+much safer but requires more resources.
 
 @item typedef ... operand;
 Structure to store an operand.

@@ -1,5 +1,5 @@
 /* syntax.c  syntax module for vasm */
-/* (c) in 2002-2010 by Frank Wille */
+/* (c) in 2002-2011 by Frank Wille */
 
 #include "vasm.h"
 
@@ -12,7 +12,7 @@
    be provided by the main module.
 */
 
-char *syntax_copyright="vasm oldstyle syntax module 0.8e (c) 2002-2010 Frank Wille";
+char *syntax_copyright="vasm oldstyle syntax module 0.8f (c) 2002-2011 Frank Wille";
 
 char commentchar=';';
 char *defsectname = NULL;
@@ -375,16 +375,16 @@ static void handle_local(char *s)
 
 static void ifdef(char *s,int b)
 {
-  char *name = s;
+  char *name;
   symbol *sym;
   int result;
 
-  name = s;
-  if (!(s = skip_identifier(s))) {
-    syntax_error(10);  /* identifier expected */
-    return;
+  if (!(name = get_local_label(&s))) {
+    if (!(name = parse_identifier(&s))) {
+      syntax_error(10);  /* identifier expected */
+      return;
+    }
   }
-  name = cnvstr(name,s-name);
   if (sym = find_symbol(name))
     result = sym->type != IMPORT;
   else
@@ -757,64 +757,46 @@ void parse(void)
     if (labname) {
       /* we have found a global or local label at first column */
       symbol *label,*labsym;
+      int equlen = 0;
 
-      if (*s==':' && *labname!=current_pc_char) {
-        label = new_labsym(0,labname);
-        add_atom(0,new_label_atom(label));
-        s = skip(s+1);
-      }
-      else {
-        if ((!strnicmp(s,"equ",3) && isspace((unsigned char)*(s+3))) ||
-            (!strnicmp(s,"eq",2) && isspace((unsigned char)*(s+2)))) {
-          if (*labname == current_pc_char) {
-            handle_org(skip(s+3));
-            continue;
-          }
-          else {
-            if (labsym = find_symbol(labname)) {
-              if (labsym->type != IMPORT)
-                syntax_error(13);  /* repeatedly defined symbol */
-            }
-            s = skip(s+3);
-            label = new_abs(labname,parse_expr_tmplab(&s));
-          }
-        }
-        else if (*s=='=') {
-          if (*labname == current_pc_char) {
-            handle_org(skip(s+3));
-            continue;
-          }
-          else {
-            if (labsym = find_symbol(labname)) {
-              if (labsym->type != IMPORT)
-                syntax_error(13);  /* repeatedly defined symbol */
-            }
-            s = skip(s+1);
-            label = new_abs(labname,parse_expr_tmplab(&s));
-          }
+      if (!strnicmp(s,"equ",3) && isspace((unsigned char)*(s+3)))
+        equlen = 3;
+      else if (!strnicmp(s,"eq",2) && isspace((unsigned char)*(s+2)))
+        equlen = 2;
+      else if (*s == '=')
+        equlen = 1;
+
+      if (equlen) {
+        /* found a kind of equate directive */
+        if (*labname == current_pc_char) {
+          handle_org(skip(s+equlen));
+          continue;
         }
         else {
-          if (*labname == current_pc_char) {
-            syntax_error(10);  /* identifier expected */
+          if (labsym = find_symbol(labname)) {
+            if (labsym->type != IMPORT)
+              syntax_error(13);  /* repeatedly defined symbol */
           }
-          else if (!strnicmp(s,"set",3) && isspace((unsigned char)*(s+3))) {
-            /* SET allows redefinitions */
-            s = skip(s+3);
-            label = new_abs(labname,parse_expr_tmplab(&s));
-          }
-          else {
-            label = new_labsym(0,labname);
-            add_atom(0,new_label_atom(label));
-            if (*s == current_pc_char) {
-              char *s2 = skip(s+1);   /* label *= ... */
-
-              if (*s2 == '=') {
-                handle_org(skip(s2+1));
-                continue;
-              }
-            }
-          }
+          s = skip(s+equlen);
+          label = new_abs(labname,parse_expr_tmplab(&s));
         }
+      }
+      else if (!strnicmp(s,"set",3) && isspace((unsigned char)*(s+3))) {
+        /* SET allows redefinitions */
+        if (*labname == current_pc_char) {
+          syntax_error(10);  /* identifier expected */
+        }
+        else {
+          s = skip(s+3);
+          label = new_abs(labname,parse_expr_tmplab(&s));
+        }
+      }
+      else {
+        /* it's just a label */
+        label = new_labsym(0,labname);
+        add_atom(0,new_label_atom(label));
+        if (*s == ':')	/* optionally terminated by a colon */
+          s = skip(s+1);
       }
       myfree(labname);
     }
@@ -960,7 +942,7 @@ char *get_local_label(char **start)
     while (isalnum((unsigned char)*s) || *s=='_')  /* '_' needed for '\@' */
       s++;
     if (s > (*start+1)) {
-      name = make_local_label(*start,s-*start);
+      name = make_local_label(NULL,0,*start,s-*start);
       *start = skip(s);
     }
   }
@@ -968,7 +950,7 @@ char *get_local_label(char **start)
     while (isalnum((unsigned char)*s) || *s=='_')  /* '_' needed for '\@' */
       s++;
     if (s!=*start && *s=='$') {
-      name = make_local_label(*start,s-*start);
+      name = make_local_label(NULL,0,*start,s-*start);
       *start = skip(++s);
     }
   }
